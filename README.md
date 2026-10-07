@@ -65,6 +65,12 @@ Depois de executar o schema principal, abra o arquivo `supabase/storage-setup.sq
 
 Esse script é idempotente: ele cria o bucket `portfolio` como público e mantém as policies de upload, atualização, exclusão e leitura.
 
+O bucket limita cada arquivo a 50 MiB (50 × 1024 × 1024 bytes). Execute novamente `supabase/storage-setup.sql` para aplicar esse limite ao bucket existente. Confirme também em **Storage → Settings** se o limite global de tamanho do projeto Supabase permite arquivos de até 50 MiB.
+
+No painel administrativo, imagens JPG, PNG, WebP e AVIF são convertidas para WebP (até 2560 px) antes do envio. Vídeos MP4, WebM e MOV de até 50 MiB são convertidos no navegador para MP4 e recebem uma imagem de prévia. O FFmpeg WebAssembly, de aproximadamente 32 MiB, é carregado somente ao iniciar uma compressão de vídeo; capas e imagens de galeria são carregadas sob demanda nas páginas públicas, e vídeos não tocam nem baixam automaticamente na listagem. O comando de desenvolvimento e o build usam Webpack para compatibilidade com o worker do FFmpeg.
+
+**Licença do compressor de vídeo:** `@ffmpeg/core` é distribuído sob GPL-2.0-or-later. Revise as obrigações dessa licença antes de disponibilizar a função em produção; para evitá-la, será necessário substituir o compressor por uma implementação compatível.
+
 ### Verificação
 
 Depois da execução, confirme que aparecem:

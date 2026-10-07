@@ -4,11 +4,12 @@
 begin;
 
 -- Garante que o bucket público exista.
-insert into storage.buckets (id, name, public)
-values ('portfolio', 'portfolio', true)
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('portfolio', 'portfolio', true, 52428800)
 on conflict (id) do update set
   name = excluded.name,
-  public = true;
+  public = true,
+  file_size_limit = excluded.file_size_limit;
 
 -- Permite leitura pública das imagens do portfolio.
 drop policy if exists "portfolio public read" on storage.objects;

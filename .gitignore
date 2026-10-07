@@ -4,6 +4,7 @@ out/
 .vercel/
 .env*
 !.env.example
+public/vendor/ffmpeg/
 npm-debug.log*
 .DS_Store
 anima-estudio-v2-FINAL-CORRETO.zip

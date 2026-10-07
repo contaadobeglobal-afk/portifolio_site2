@@ -18,11 +18,9 @@ function Media({ project }: { project: CardProject }) {
     return <div className={art}>{label}</div>;
   }
 
-  if (project.media_mode === 'video' && project.video_url && /\.(mp4|webm|mov)(\?.*)?$/i.test(project.video_url)) {
-    return <video src={project.video_url} muted autoPlay loop playsInline preload="metadata" aria-label={project.title} />;
-  }
-
-  return project.cover_url ? <img src={project.cover_url} alt={project.title} loading="lazy" /> : <div className="art-3">ANIMA</div>;
+  return project.cover_url
+    ? <img src={project.cover_url} alt={project.title} loading="lazy" decoding="async" />
+    : <div className="art-3">ANIMA</div>;
 }
 
 export default function ProjectCard({ project, index, compact = false }: { project: CardProject; index: number; compact?: boolean }) {

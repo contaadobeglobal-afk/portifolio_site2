@@ -7,7 +7,7 @@ export default function Footer() {
           <div className="foot-title">Lucas Miranda</div>
         </div>
         <div className="eyebrow">Direção de arte / Design</div>
-        <div className="eyebrow">© {new Date().getFullYear()}</div>
+        <div className="eyebrow">© 2020</div>
       </div>
     </footer>
   );

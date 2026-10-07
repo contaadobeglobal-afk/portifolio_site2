@@ -1,4 +1,5 @@
 export type ProjectFormat = 'auto' | '9:16' | '3:4' | '1:1' | '16:9';
+export type ProjectMediaMode = 'single' | 'gallery' | 'carousel' | 'video';
 
 export type Project = {
   id: string;
@@ -6,6 +7,7 @@ export type Project = {
   slug: string;
   category: string;
   format: ProjectFormat;
+  media_mode: ProjectMediaMode;
   year: number | null;
   client: string | null;
   role: string | null;

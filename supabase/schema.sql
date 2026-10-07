@@ -15,6 +15,7 @@ create table if not exists public.portfolio_projects (
   slug text not null unique,
   category text not null default 'Direção de arte',
   format text not null default 'auto' check (format in ('auto','9:16','3:4','1:1','16:9')),
+  media_mode text not null default 'single' check (media_mode in ('single','gallery','carousel','video')),
   year int,
   client text,
   role text,
@@ -34,8 +35,11 @@ create table if not exists public.portfolio_projects (
 );
 
 alter table public.portfolio_projects add column if not exists format text not null default 'auto';
+alter table public.portfolio_projects add column if not exists media_mode text not null default 'single';
 alter table public.portfolio_projects drop constraint if exists portfolio_projects_format_check;
 alter table public.portfolio_projects add constraint portfolio_projects_format_check check (format in ('auto','9:16','3:4','1:1','16:9'));
+alter table public.portfolio_projects drop constraint if exists portfolio_projects_media_mode_check;
+alter table public.portfolio_projects add constraint portfolio_projects_media_mode_check check (media_mode in ('single','gallery','carousel','video'));
 
 create index if not exists portfolio_projects_public_idx on public.portfolio_projects (published, featured, sort_order);
 

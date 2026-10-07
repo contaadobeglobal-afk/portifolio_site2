@@ -7,9 +7,10 @@ export default function Header() {
       <div className="container site-header-inner">
         <Link className="wordmark" href="/">ANIMA</Link>
         <nav className="nav" aria-label="Principal">
-          <Link href="/trabalhos">Trabalhos</Link>
-          <Link href="/sobre">Sobre</Link>
-          <a href={`mailto:${site.email}`}>Contato</a>
+          <Link href="/#work" data-section="work">Trabalhos</Link>
+          <Link href="/#about" data-section="about">Sobre</Link>
+          <Link href="/#contact" data-section="contact">Contato</Link>
+          <a className="nav-cta" data-cursor="cta" href={`mailto:${site.email}`}>Vamos conversar ↗</a>
         </nav>
       </div>
     </header>

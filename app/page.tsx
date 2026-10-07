@@ -37,12 +37,16 @@ export default async function Home() {
         <div className="container hero-grid reveal">
           <div>
             <div className="eyebrow">Anima Estudio / Lucas Miranda</div>
-            <h1>Direção de arte para marcas que querem ser lembradas.</h1>
-            <p className="hero-copy">{site.statement}</p>
+            <h1>
+              <span>Direção de </span>
+              <span>arte para </span>
+              <span>marcas que </span>
+              <span>querem ser </span>
+              <span>lembradas.</span>
+            </h1>
           </div>
           <div className="hero-foot">
             <div className="eyebrow">Role para explorar ↓</div>
-            <p className="note">Marcas, campanhas, imagem e experiências visuais com intenção.</p>
           </div>
         </div>
       </section>

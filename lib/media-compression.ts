@@ -61,12 +61,48 @@ async function getFFmpeg(onProgress: ProgressHandler) {
   }
 }
 
+function readVideoDuration(file: File) {
+  return new Promise<number>((resolve, reject) => {
+    const video = document.createElement('video');
+    const objectUrl = URL.createObjectURL(file);
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('O navegador demorou para ler o vídeo. Tente novamente ou use um arquivo MP4.'));
+    }, 15000);
+
+    function cleanup() {
+      window.clearTimeout(timeout);
+      video.removeAttribute('src');
+      video.load();
+      URL.revokeObjectURL(objectUrl);
+    }
+
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      const duration = video.duration;
+      cleanup();
+      if (!Number.isFinite(duration) || duration <= 0) {
+        reject(new Error('O vídeo não informa uma duração válida.'));
+        return;
+      }
+      resolve(duration);
+    };
+    video.onerror = () => {
+      cleanup();
+      reject(new Error('O navegador não conseguiu ler a duração deste vídeo. Tente exportá-lo como MP4.'));
+    };
+    video.src = objectUrl;
+  });
+}
+
 export async function compressVideo(file: File, onProgress: ProgressHandler) {
   validateMediaSize(file);
   if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
     throw new Error(`Formato de vídeo não suportado: ${file.type || 'desconhecido'}. Use MP4, WebM ou MOV.`);
   }
 
+  onProgress(5);
+  const duration = await readVideoDuration(file);
   const ffmpeg = await getFFmpeg(onProgress);
   const id = crypto.randomUUID();
   const extension = file.type === 'video/webm' ? 'webm' : file.type === 'video/quicktime' ? 'mov' : 'mp4';
@@ -77,19 +113,6 @@ export async function compressVideo(file: File, onProgress: ProgressHandler) {
   try {
     onProgress(8);
     await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
-    const probeCode = await ffmpeg.ffprobe([
-      '-v', 'error',
-      '-show_entries', 'format=duration',
-      '-of', 'default=noprint_wrappers=1:nokey=1',
-      inputName,
-      '-o', `duration-${id}.txt`,
-    ]);
-    if (probeCode !== 0) throw new Error('Não foi possível ler a duração do vídeo.');
-
-    const durationText = await ffmpeg.readFile(`duration-${id}.txt`, 'utf8');
-    const duration = Number(durationText);
-    if (!Number.isFinite(duration) || duration <= 0) throw new Error('A duração do vídeo é inválida.');
-
     const targetTotalKbps = Math.floor((MAX_MEDIA_SIZE * 8 * 0.88) / duration / 1000);
     if (targetTotalKbps < 40) {
       throw new Error('Este vídeo é longo demais para caber em 50 MB com qualidade aceitável. Reduza a duração e tente novamente.');

@@ -4,7 +4,7 @@ import Footer from '@/components/Footer';
 import Pointer from '@/components/Pointer';
 
 export const metadata = {
-  title: 'Lucas Miranda — Anima Estudio',
+  title: 'Lucas Miranda',
   description: 'Direção de arte, design, vídeo, motion, editorial, impresso e IA no processo criativo.',
   icons: { icon: '/favicon.svg', apple: '/anima-icon.svg' },
 };

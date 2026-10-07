@@ -33,6 +33,10 @@ Documento de preparação e publicação do portfólio no Vercel, usando Supabas
 - `/admin/projetos/novo` — cadastro de projeto
 - `/admin/projetos/[id]` — edição de projeto
 
+## Ordenar os trabalhos
+
+No formulário de criação ou edição, use **Posição na lista**: números menores aparecem primeiro em `/trabalhos` e na navegação entre cases. Projetos novos recebem automaticamente uma posição no final da lista; altere o número para mudar a ordem. A home continua priorizando os projetos marcados como destaque.
+
 ## Antes de começar
 
 Antes de publicar, é necessário:

@@ -21,13 +21,14 @@ export default async function ProjectPage({ params }: { params: Promise<{slug:st
   let next: {slug:string; title:string} | undefined;
   if (isDemo) {
     const index = demoProjects.findIndex((item)=>item.slug===project.slug);
-    next = demoProjects[(index + 1) % demoProjects.length];
+    next = demoProjects.length > 1 ? demoProjects[(index + 1) % demoProjects.length] : undefined;
   } else {
-    const {data:following,error:followingError}=await supabase.from('portfolio_projects').select('id,title,slug').eq('published',true).neq('id',project.id).gt('sort_order',project.sort_order).order('sort_order',{ascending:true}).limit(1).maybeSingle();
-    if(followingError) throw new Error(`Não foi possível carregar o próximo projeto: ${followingError.message}`);
-    const {data:firstProject,error:firstProjectError}=following ? {data:null,error:null} : await supabase.from('portfolio_projects').select('title,slug').eq('published',true).neq('id',project.id).order('sort_order',{ascending:true}).limit(1).maybeSingle();
-    if(firstProjectError) throw new Error(`Não foi possível carregar o próximo projeto: ${firstProjectError.message}`);
-    next = following ?? firstProject ?? undefined;
+    const {data:orderedProjects,error:orderedProjectsError}=await supabase.from('portfolio_projects').select('id,title,slug').eq('published',true).order('sort_order',{ascending:true}).order('created_at',{ascending:true});
+    if(orderedProjectsError) throw new Error(`Não foi possível carregar a ordem dos projetos: ${orderedProjectsError.message}`);
+    const currentIndex=orderedProjects.findIndex((item)=>item.id===project.id);
+    next = orderedProjects.length > 1 && currentIndex >= 0
+      ? orderedProjects[(currentIndex + 1) % orderedProjects.length]
+      : undefined;
   }
 
   const format=(project.format??'auto') as ProjectFormat;

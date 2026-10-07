@@ -9,7 +9,7 @@ const EMPTY = { title:'', slug:'', category:'Direção de arte', format:'auto' a
 
 type FormState = Omit<typeof EMPTY, 'format'> & { format: ProjectFormat };
 
-export default function ProjectForm({ project }: { project?: Project }) {
+export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: Project; nextSortOrder?: number }) {
   const initial: FormState = useMemo(() => project ? ({
     ...EMPTY,
     ...project,
@@ -25,7 +25,7 @@ export default function ProjectForm({ project }: { project?: Project }) {
     year: project.year?.toString() ?? '',
     gallery_urls: project.gallery_urls ?? [],
     sort_order: project.sort_order.toString()
-  }) : EMPTY, [project]);
+  }) : { ...EMPTY, sort_order: String(nextSortOrder) }, [nextSortOrder, project]);
   const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -101,9 +101,15 @@ export default function ProjectForm({ project }: { project?: Project }) {
   }
 
   async function submit(e: FormEvent) {
-    e.preventDefault(); setBusy(true); setError(''); setMessage('');
+    e.preventDefault();
+    const sortOrder = Number(form.sort_order);
+    if (!Number.isInteger(sortOrder) || sortOrder < 1) {
+      setError('Informe uma posição inteira maior que zero.');
+      return;
+    }
+    setBusy(true); setError(''); setMessage('');
     const supabase = createClient();
-    const payload = { title:form.title, slug:form.slug || slugify(form.title), category:form.category, format:form.format, media_mode:form.media_mode, year:form.year ? Number(form.year) : null, client:form.client || null, role:form.role || null, intro:form.intro || null, challenge:form.challenge || null, direction:form.direction || null, result:form.result || null, cover_url:form.cover_url, gallery_urls:form.gallery_urls, video_url:form.video_url || null, credits:form.credits || null, featured:form.featured, published:form.published, sort_order:Number(form.sort_order) || 0 };
+    const payload = { title:form.title, slug:form.slug || slugify(form.title), category:form.category, format:form.format, media_mode:form.media_mode, year:form.year ? Number(form.year) : null, client:form.client || null, role:form.role || null, intro:form.intro || null, challenge:form.challenge || null, direction:form.direction || null, result:form.result || null, cover_url:form.cover_url, gallery_urls:form.gallery_urls, video_url:form.video_url || null, credits:form.credits || null, featured:form.featured, published:form.published, sort_order:sortOrder };
     const query = project ? supabase.from('portfolio_projects').update(payload).eq('id', project.id) : supabase.from('portfolio_projects').insert(payload);
     const { error } = await query;
     if (error) { setError(error.message); setBusy(false); return; }
@@ -117,7 +123,7 @@ export default function ProjectForm({ project }: { project?: Project }) {
       <div className="admin-field"><label>Título *</label><input required value={form.title} onChange={e => set('title', e.target.value)} onBlur={() => !form.slug && set('slug', slugify(form.title))} /></div>
       <div className="admin-field"><label>Ano</label><input inputMode="numeric" value={form.year} onChange={e => set('year', e.target.value)} /></div>
     </div>
-    <div className="admin-card admin-form-grid"><div className="admin-field"><label>Slug</label><input value={form.slug} onChange={e => set('slug', e.target.value)} /></div><div className="admin-field"><label>Ordem</label><input inputMode="numeric" value={form.sort_order} onChange={e => set('sort_order', e.target.value)} /></div></div>
+    <div className="admin-card admin-form-grid"><div className="admin-field"><label>Slug</label><input value={form.slug} onChange={e => set('slug', e.target.value)} /></div><div className="admin-field"><label>Posição na lista</label><input type="number" min="1" step="1" value={form.sort_order} onChange={e => set('sort_order', e.target.value)} /><small style={{ color:'#858179' }}>Número menor aparece primeiro. Novos projetos começam no final; ajuste aqui para mudar a ordem.</small></div></div>
     <div className="admin-card admin-form-grid"><div className="admin-field"><label>Categoria</label><input value={form.category} onChange={e => set('category', e.target.value)} /></div><div className="admin-field"><label>Apresentação</label><select value={form.media_mode} onChange={e => set('media_mode', e.target.value as ProjectMediaMode)}><option value="single">Peça única</option><option value="gallery">Galeria</option><option value="carousel">Carrossel</option><option value="video">Vídeo / Motion</option></select></div><div className="admin-field"><label>Formato principal</label><select value={form.format} onChange={e => set('format', e.target.value as FormState['format'])}><option value="auto">Automático</option><option value="9:16">9:16 — Motion vertical</option><option value="3:4">3:4 — Social 1080×1440</option><option value="1:1">1:1 — Quadrado</option><option value="16:9">16:9 — Horizontal</option></select></div></div>
     <div className="admin-card admin-form-grid"><div className="admin-field"><label>Cliente</label><input value={form.client} onChange={e => set('client', e.target.value)} /></div></div>
     <div className="admin-card admin-form-grid"><div className="admin-field"><label>Meu papel</label><input value={form.role} onChange={e => set('role', e.target.value)} /></div><div className="admin-field"><label>Créditos</label><input value={form.credits} onChange={e => set('credits', e.target.value)} /></div></div>

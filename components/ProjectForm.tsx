@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client';
 import { slugify } from '@/lib/slugify';
 import type { Project, ProjectFormat, ProjectMediaMode } from '@/lib/types';
 
-const EMPTY = { title:'', slug:'', category:'Direção de arte', format:'auto' as const, media_mode:'single' as ProjectMediaMode, year:new Date().getFullYear().toString(), client:'', role:'', intro:'', challenge:'', direction:'', result:'', cover_url:'', gallery_urls:[] as string[], video_url:'', credits:'', featured:false, published:false, sort_order:'0' };
+const EMPTY = { title:'', slug:'', category:'Direção de arte', format:'auto' as ProjectFormat, media_mode:'single' as ProjectMediaMode, year:new Date().getFullYear().toString(), client:'', role:'', intro:'', challenge:'', direction:'', result:'', cover_url:'', gallery_urls:[] as string[], video_url:'', credits:'', featured:false, published:false, sort_order:'0' };
 
 type FormState = Omit<typeof EMPTY, 'format'> & { format: ProjectFormat };
 

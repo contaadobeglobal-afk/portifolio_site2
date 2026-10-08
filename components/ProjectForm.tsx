@@ -77,7 +77,6 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
     setError('');
     setMessage('');
     try {
-      validateMediaSize(file);
       setUploadStatus('Preparando o compressor de vídeo…');
       const optimized = await compressVideo(file, progress => {
         if (progress >= 92) {
@@ -88,9 +87,11 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
           setUploadStatus(`Comprimindo vídeo no navegador… ${progress}%`);
         }
       });
+
       setUploadStatus('Enviando prévia do vídeo…');
       const posterUrl = await storeMedia(optimized.poster, 'poster');
-      setUploadStatus('Enviando vídeo…');
+      const sizeMb = (optimized.video.size / (1024 * 1024)).toFixed(1);
+      setUploadStatus(`Enviando vídeo (${sizeMb} MB) ao Supabase…`);
       const videoUrl = await storeMedia(optimized.video, 'video');
       setForm(current => ({
         ...current,
@@ -161,7 +162,7 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
         {form.gallery_urls.length > 0 && <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>{form.gallery_urls.map((url, index) => <div key={url} style={{ display:'grid', gap:6 }}><img src={url} alt="" loading="lazy" decoding="async" style={{ width:'100%', aspectRatio:1, objectFit:'cover' }} /><button type="button" className="admin-button ghost" disabled={busy} onClick={() => set('gallery_urls', form.gallery_urls.filter((_, itemIndex) => itemIndex !== index))}>Remover</button></div>)}</div>}
       </div>
       <div className="admin-field">
-        <label>Enviar vídeo (MP4/WebM/MOV, até 50 MB)</label>
+        <label>Enviar vídeo (MP4/WebM/MOV)</label>
         <input type="file" accept="video/mp4,video/webm,video/quicktime" disabled={busy} onChange={e => { void uploadVideo(e.target.files?.[0]); e.currentTarget.value = ''; }} />
         <small style={{ color:'#858179' }}>O vídeo é comprimido no navegador para MP4 e recebe uma imagem de prévia.</small>
         <label>Vídeo por URL ou embed</label>
@@ -169,7 +170,7 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
         {form.video_url && /\.(mp4|webm|mov)(\?.*)?$/i.test(form.video_url) && <video src={form.video_url} poster={form.cover_url || undefined} controls playsInline preload="metadata" style={{ width:'100%', maxHeight:320 }} />}
         {form.video_url && <button type="button" className="admin-button ghost" disabled={busy} onClick={() => set('video_url', '')}>Remover vídeo</button>}
       </div>
-      <small style={{ color:'#858179' }}>Cada arquivo selecionado deve ter no máximo {Math.round(MAX_MEDIA_SIZE / 1024 / 1024)} MB.</small>
+      <small style={{ color:'#858179' }}>Vídeos são processados no navegador com FFmpeg/WASM e convertidos para MP4. O vídeo resultante deve caber em {Math.round(MAX_MEDIA_SIZE / 1024 / 1024)} MB para o Storage.</small>
       {uploadStatus && <div className="notice" aria-live="polite">{uploadStatus}</div>}
     </div>
     <div className="admin-card admin-checks"><label className="admin-check"><input type="checkbox" checked={form.featured} onChange={e => set('featured', e.target.checked)} /> Destaque na home</label><label className="admin-check"><input type="checkbox" checked={form.published} onChange={e => set('published', e.target.checked)} /> Publicado</label></div>

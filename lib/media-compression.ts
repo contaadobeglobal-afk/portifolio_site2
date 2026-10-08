@@ -1,6 +1,6 @@
 'use client';
 
-import type { FFmpeg } from '@ffmpeg/ffmpeg';
+import type { FFmpeg, FFFSType } from '@ffmpeg/ffmpeg';
 
 export const MAX_MEDIA_SIZE = 50 * 1024 * 1024;
 
@@ -95,7 +95,6 @@ function readVideoDuration(file: File) {
 }
 
 export async function compressVideo(file: File, onProgress: ProgressHandler) {
-  validateMediaSize(file);
   if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)) {
     throw new Error(`Formato de vídeo não suportado: ${file.type || 'desconhecido'}. Use MP4, WebM ou MOV.`);
   }
@@ -104,20 +103,21 @@ export async function compressVideo(file: File, onProgress: ProgressHandler) {
   const duration = await readVideoDuration(file);
   const ffmpeg = await getFFmpeg();
   const id = crypto.randomUUID();
-  const extension = file.type === 'video/webm' ? 'webm' : file.type === 'video/quicktime' ? 'mov' : 'mp4';
-  const inputName = `input-${id}.${extension}`;
+  const inputDirectory = `/input-${id}`;
+  const inputPath = `${inputDirectory}/${file.name}`;
   const outputName = `video-${id}.mp4`;
   const posterName = `poster-${id}.jpg`;
   const compressionProgress = ({ time }: { progress: number; time: number }) => {
     const processedSeconds = time / 1_000_000;
     const ratio = Math.min(1, Math.max(0, processedSeconds / duration));
-    onProgress(8 + Math.floor(ratio * 74));
+    onProgress(ratio >= 0.98 ? 85 : 8 + Math.floor(ratio * 76));
   };
 
   try {
     onProgress(8);
     ffmpeg.on('progress', compressionProgress);
-    await ffmpeg.writeFile(inputName, new Uint8Array(await file.arrayBuffer()));
+    await ffmpeg.createDir(inputDirectory);
+    await ffmpeg.mount('WORKERFS' as FFFSType, { files: [file] }, inputDirectory);
     const targetTotalKbps = Math.floor((MAX_MEDIA_SIZE * 8 * 0.88) / duration / 1000);
     if (targetTotalKbps < 40) {
       throw new Error('Este vídeo é longo demais para caber em 50 MB com qualidade aceitável. Reduza a duração e tente novamente.');
@@ -125,9 +125,10 @@ export async function compressVideo(file: File, onProgress: ProgressHandler) {
     const audioKbps = Math.min(96, Math.max(16, Math.floor(targetTotalKbps * 0.12)));
     const videoKbps = Math.min(8000, Math.max(16, targetTotalKbps - audioKbps));
     const compressionStartedAt = Date.now();
-    const compressionTimeoutMs = 15 * 60 * 1000;
+    const timeoutUnits = Math.max(1, Math.ceil(file.size / MAX_MEDIA_SIZE), Math.ceil(duration / 300));
+    const compressionTimeoutMs = Math.min(timeoutUnits * 15 * 60 * 1000, 2_147_000_000);
     const exitCode = await ffmpeg.exec([
-      '-i', inputName,
+      '-i', inputPath,
       '-vf', "scale='trunc(min(1920,iw)/2)*2':-2,fps=30",
       '-c:v', 'libx264',
       '-preset', 'veryfast',
@@ -142,7 +143,7 @@ export async function compressVideo(file: File, onProgress: ProgressHandler) {
     ], compressionTimeoutMs);
     if (exitCode !== 0) {
       if (Date.now() - compressionStartedAt >= compressionTimeoutMs) {
-        throw new Error('A compressão excedeu 15 minutos e foi interrompida. Tente um vídeo menor ou reduza sua resolução/duração.');
+        throw new Error('O tempo máximo de compressão deste arquivo foi excedido. Tente novamente ou reduza sua resolução/duração.');
       }
       throw new Error('Não foi possível comprimir este vídeo no navegador. Tente novamente ou use um arquivo menor.');
     }

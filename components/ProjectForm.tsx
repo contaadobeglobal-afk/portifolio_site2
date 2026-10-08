@@ -224,7 +224,7 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
         <small style={{ color:'#858179' }}>O vídeo é comprimido no navegador para MP4 e recebe uma imagem de prévia.</small>
         <label>Vídeo por URL ou embed</label>
         <input placeholder="https://.../video.mp4 ou https://www.youtube.com/embed/..." value={form.video_url} disabled={videoBusy} onChange={e => { uploadedVideo.current = null; set('video_url', e.target.value); }} />
-        {form.video_url && /\.(mp4|webm|mov)(\?.*)?$/i.test(form.video_url) && <video src={form.video_url} poster={form.cover_url || undefined} controls playsInline preload="metadata" style={{ width:'100%', maxHeight:320 }} />}
+        {form.video_url && /\.(mp4|webm|mov)(\?.*)?$/i.test(form.video_url) && <div style={{ width:'100%', aspectRatio:form.format === '9:16' ? '9 / 16' : form.format === '3:4' ? '3 / 4' : form.format === '1:1' ? '1 / 1' : '16 / 9', maxHeight:320, overflow:'hidden' }}><video src={form.video_url} poster={form.cover_url || undefined} controls playsInline preload="metadata" style={{ width:'100%', height:'100%', objectFit:'cover' }} /></div>}
         {form.video_url && <button type="button" className="admin-button ghost" disabled={busy || videoBusy} onClick={() => { uploadedVideo.current = null; set('video_url', ''); }}>Remover vídeo</button>}
       </div>
       <small style={{ color:'#858179' }}>Vídeos são processados no navegador com FFmpeg/WASM e convertidos para MP4. Você pode salvar o projeto enquanto o processamento continua; mantenha esta aba aberta para o vídeo ser associado assim que terminar. O arquivo final deve caber em {Math.round(MAX_MEDIA_SIZE / 1024 / 1024)} MB para o Storage.</small>

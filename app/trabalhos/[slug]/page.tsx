@@ -36,7 +36,7 @@ export default async function ProjectPage({ params }: { params: Promise<{slug:st
   const mode=project.media_mode??'single';
   return <main className="case-view">
     <div className="container">
-      <div className="case-nav"><Link className="case-back" href="/trabalhos">← Todos os trabalhos</Link><span className="case-count">Case / {format==='auto'?'Formato livre':format}</span></div>
+      <div className="case-nav"><Link className="case-back" href="/trabalhos">← Todos os trabalhos</Link></div>
       <div className="case-top"><div><div className="eyebrow">{project.category} / {project.year ?? '—'}</div><h1 className="case-title">{project.title}</h1>{project.intro&&<p className="case-intro">{project.intro}</p>}</div><div className="case-details"><div className="case-detail"><b>Cliente</b>{project.client||'—'}</div><div className="case-detail"><b>Meu papel</b>{project.role||'—'}</div><div className="case-detail"><b>Créditos</b>{project.credits||'—'}</div></div></div>
       <div className={`case-cover-preview ${coverClass[format]}`}>
         {isDemo ? <div className={project.demo_art}>{project.demo_art==='art-1'?'MOTION':project.demo_art==='art-2'?'SOCIAL':'MOTION / IMAGE'}</div> : project.video_url && isVideo(project.video_url) && project.media_mode==='video' ? <video src={project.video_url} poster={project.cover_url || undefined} controls playsInline preload="metadata" className="case-cover-video" style={{ width:'100%', height:'100%', objectFit:'contain' }} /> : <img src={project.cover_url} alt={project.title} decoding="async" fetchPriority="high" />}

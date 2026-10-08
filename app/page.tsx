@@ -76,7 +76,7 @@ export default async function Home() {
       </section>
 
       <section className="cta" id="contact">
-        <div className="container cta-top reveal"><div><div className="eyebrow"></div><h3>Vamos criar algo que mereça ser visto.</h3></div><a data-cursor="cta" href={`mailto:${site.email}`}>Falar comigo →</a></div>
+        <div className="container cta-top reveal"><div><div className="eyebrow"></div><h3>Vamos criar algo que mereça ser visto.</h3></div><a data-cursor="cta" href={site.whatsapp} target="_blank" rel="noreferrer">Falar comigo →</a></div>
       </section>
     </main>
   </>;

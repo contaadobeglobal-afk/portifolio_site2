@@ -12,7 +12,7 @@ export default function SobrePage() {
             <div className="expertise">
               {['Direção de arte', 'Branding', 'Campanhas', 'Edição de vídeo', 'Motion & imagem', 'Social & digital', 'Editorial & impresso', 'IA no processo criativo'].map((item) => <div className="expertise-item" key={item}>{item}</div>)}
             </div>
-            <a className="project-link" href={`mailto:${site.email}`}>Falar comigo</a>
+            <a className="project-link" href={site.whatsapp} target="_blank" rel="noreferrer">Falar comigo</a>
           </div>
         </div>
       </section>

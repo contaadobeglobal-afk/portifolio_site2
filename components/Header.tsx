@@ -10,7 +10,7 @@ export default function Header() {
           <Link href="/#work" data-section="work">Trabalhos</Link>
           <Link href="/#about" data-section="about">Sobre</Link>
           <Link href="/#contact" data-section="contact">Contato</Link>
-          <a className="nav-cta" data-cursor="cta" href={`mailto:${site.email}`}>Vamos conversar ↗</a>
+          <a className="nav-cta" data-cursor="cta" href={site.whatsapp} target="_blank" rel="noreferrer">Vamos conversar ↗</a>
         </nav>
       </div>
     </header>

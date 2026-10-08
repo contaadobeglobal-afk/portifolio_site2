@@ -80,7 +80,13 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
       validateMediaSize(file);
       setUploadStatus('Preparando o compressor de vídeo…');
       const optimized = await compressVideo(file, progress => {
-        setUploadStatus(`Comprimindo vídeo no navegador… ${progress}%`);
+        if (progress >= 92) {
+          setUploadStatus('Gerando imagem de prévia…');
+        } else if (progress >= 85) {
+          setUploadStatus('Finalizando o arquivo de vídeo…');
+        } else {
+          setUploadStatus(`Comprimindo vídeo no navegador… ${progress}%`);
+        }
       });
       setUploadStatus('Enviando prévia do vídeo…');
       const posterUrl = await storeMedia(optimized.poster, 'poster');
@@ -168,6 +174,6 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
     </div>
     <div className="admin-card admin-checks"><label className="admin-check"><input type="checkbox" checked={form.featured} onChange={e => set('featured', e.target.checked)} /> Destaque na home</label><label className="admin-check"><input type="checkbox" checked={form.published} onChange={e => set('published', e.target.checked)} /> Publicado</label></div>
     {error && <div className="error">{error}</div>}{message && <div className="notice">{message}</div>}
-    <div className="admin-form-actions"><button type="button" className="admin-button ghost" onClick={() => window.location.href='/admin'}>Cancelar</button><button className="admin-button" disabled={busy}>{busy ? 'Salvando…' : 'Salvar projeto'}</button></div>
+    <div className="admin-form-actions"><button type="button" className="admin-button ghost" onClick={() => window.location.href='/admin'}>Cancelar</button><button className="admin-button" disabled={busy}>{busy ? 'Processando…' : 'Salvar projeto'}</button></div>
   </form>;
 }

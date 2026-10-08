@@ -86,7 +86,7 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
       setUploadStatus('Preparando o compressor de vídeo…');
       const optimized = await compressVideo(file, progress => {
         if (progress >= 92) {
-          setUploadStatus('Gerando imagem de prévia…');
+          setUploadStatus('Gerando imagem de prévia no navegador…');
         } else if (progress >= 85) {
           setUploadStatus('Finalizando o arquivo de vídeo…');
         } else {

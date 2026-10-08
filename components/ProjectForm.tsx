@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { removeUnreferencedPortfolioMedia } from '@/lib/portfolio-media';
 import { slugify } from '@/lib/slugify';
 import { compressImage, compressVideo, MAX_MEDIA_SIZE, validateMediaSize } from '@/lib/media-compression';
 import type { Project, ProjectFormat, ProjectMediaMode } from '@/lib/types';
@@ -115,6 +116,15 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
     if (error) { setError(error.message); setBusy(false); return; }
     setMessage('Projeto salvo.');
     if (!project) { window.location.href = '/admin'; return; }
+    try {
+      await removeUnreferencedPortfolioMedia([
+        project.cover_url,
+        ...(project.gallery_urls ?? []),
+        project.video_url ?? '',
+      ]);
+    } catch (cleanupError) {
+      setError(cleanupError instanceof Error ? cleanupError.message : 'O projeto foi salvo, mas não foi possível limpar as mídias antigas.');
+    }
     setBusy(false);
   }
 
@@ -137,12 +147,12 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
         <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={busy} onChange={e => { void uploadFiles(e.target.files, 'cover'); e.currentTarget.value = ''; }} />
         <input placeholder="ou cole uma URL pública" value={form.cover_url} onChange={e => set('cover_url', e.target.value)} />
         <small style={{ color:'#858179' }}>{form.cover_url ? 'Capa definida.' : 'Imagens são convertidas para WebP e limitadas a 2560px.'}</small>
-        {form.cover_url && <img src={form.cover_url} alt="Prévia da capa" loading="lazy" decoding="async" style={{ width:'100%', maxHeight:240, objectFit:'cover' }} />}
+        {form.cover_url && <><img src={form.cover_url} alt="Prévia da capa" loading="lazy" decoding="async" style={{ width:'100%', maxHeight:240, objectFit:'cover' }} /><button type="button" className="admin-button ghost" disabled={busy} onClick={() => set('cover_url', '')}>Remover capa</button></>}
       </div>
       <div className="admin-field">
         <label>Galeria</label>
         <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple disabled={busy} onChange={e => { void uploadFiles(e.target.files, 'gallery'); e.currentTarget.value = ''; }} />
-        {form.gallery_urls.length > 0 && <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>{form.gallery_urls.map(url => <img key={url} src={url} alt="" loading="lazy" decoding="async" style={{ width:'100%', aspectRatio:1, objectFit:'cover' }} />)}</div>}
+        {form.gallery_urls.length > 0 && <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>{form.gallery_urls.map((url, index) => <div key={url} style={{ display:'grid', gap:6 }}><img src={url} alt="" loading="lazy" decoding="async" style={{ width:'100%', aspectRatio:1, objectFit:'cover' }} /><button type="button" className="admin-button ghost" disabled={busy} onClick={() => set('gallery_urls', form.gallery_urls.filter((_, itemIndex) => itemIndex !== index))}>Remover</button></div>)}</div>}
       </div>
       <div className="admin-field">
         <label>Enviar vídeo (MP4/WebM/MOV, até 50 MB)</label>
@@ -151,6 +161,7 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
         <label>Vídeo por URL ou embed</label>
         <input placeholder="https://.../video.mp4 ou https://www.youtube.com/embed/..." value={form.video_url} onChange={e => set('video_url', e.target.value)} />
         {form.video_url && /\.(mp4|webm|mov)(\?.*)?$/i.test(form.video_url) && <video src={form.video_url} poster={form.cover_url || undefined} controls playsInline preload="metadata" style={{ width:'100%', maxHeight:320 }} />}
+        {form.video_url && <button type="button" className="admin-button ghost" disabled={busy} onClick={() => set('video_url', '')}>Remover vídeo</button>}
       </div>
       <small style={{ color:'#858179' }}>Cada arquivo selecionado deve ter no máximo {Math.round(MAX_MEDIA_SIZE / 1024 / 1024)} MB.</small>
       {uploadStatus && <div className="notice" aria-live="polite">{uploadStatus}</div>}

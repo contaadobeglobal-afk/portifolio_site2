@@ -129,16 +129,15 @@ export async function compressVideo(file: File, onProgress: ProgressHandler) {
     const compressionTimeoutMs = Math.min(timeoutUnits * 15 * 60 * 1000, 2_147_000_000);
     const exitCode = await ffmpeg.exec([
       '-i', inputPath,
-      '-vf', "scale='trunc(min(1920,iw)/2)*2':-2,fps=30",
+      '-vf', "scale='trunc(min(1280,iw)/2)*2':-2,fps=30",
       '-c:v', 'libx264',
-      '-preset', 'veryfast',
+      '-preset', 'ultrafast',
       '-b:v', `${videoKbps}k`,
       '-maxrate', `${videoKbps}k`,
       '-bufsize', `${videoKbps * 2}k`,
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-b:a', `${audioKbps}k`,
-      '-movflags', '+faststart',
       outputName,
     ], compressionTimeoutMs);
     if (exitCode !== 0) {

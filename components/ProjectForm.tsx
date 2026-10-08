@@ -1,5 +1,5 @@
 "use client";
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { removeUnreferencedPortfolioMedia } from '@/lib/portfolio-media';
 import { slugify } from '@/lib/slugify';
@@ -9,6 +9,7 @@ import type { Project, ProjectFormat, ProjectMediaMode } from '@/lib/types';
 const EMPTY = { title:'', slug:'', category:'Direção de arte', format:'auto' as ProjectFormat, media_mode:'single' as ProjectMediaMode, year:new Date().getFullYear().toString(), client:'', role:'', intro:'', challenge:'', direction:'', result:'', cover_url:'', gallery_urls:[] as string[], video_url:'', credits:'', featured:false, published:false, sort_order:'0' };
 
 type FormState = Omit<typeof EMPTY, 'format'> & { format: ProjectFormat };
+type UploadedVideo = { videoUrl: string; posterUrl: string };
 
 export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: Project; nextSortOrder?: number }) {
   const initial: FormState = useMemo(() => project ? ({
@@ -32,6 +33,10 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [uploadStatus, setUploadStatus] = useState('');
+  const [videoBusy, setVideoBusy] = useState(false);
+  const savedProjectId = useRef(project?.id ?? null);
+  const uploadedVideo = useRef<UploadedVideo | null>(null);
+  const backgroundSaveRequested = useRef(false);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) { setForm(s => ({ ...s, [key]: value })); }
 
@@ -73,7 +78,8 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
 
   async function uploadVideo(file: File | undefined) {
     if (!file) return;
-    setBusy(true);
+    backgroundSaveRequested.current = false;
+    setVideoBusy(true);
     setError('');
     setMessage('');
     try {
@@ -93,17 +99,35 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
       const sizeMb = (optimized.video.size / (1024 * 1024)).toFixed(1);
       setUploadStatus(`Enviando vídeo (${sizeMb} MB) ao Supabase…`);
       const videoUrl = await storeMedia(optimized.video, 'video');
+      uploadedVideo.current = { videoUrl, posterUrl };
       setForm(current => ({
         ...current,
         video_url: videoUrl,
         media_mode: 'video',
         cover_url: current.cover_url || posterUrl,
       }));
+      const projectId = savedProjectId.current;
+      if (projectId && backgroundSaveRequested.current) {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from('portfolio_projects')
+          .update({ video_url: videoUrl, media_mode: 'video' })
+          .eq('id', projectId);
+        if (error) throw new Error(`Vídeo enviado, mas não foi possível associá-lo ao projeto: ${error.message}`);
+        const { error: coverError } = await supabase
+          .from('portfolio_projects')
+          .update({ cover_url: posterUrl })
+          .eq('id', projectId)
+          .eq('cover_url', '');
+        if (coverError) throw new Error(`Vídeo enviado, mas não foi possível salvar sua imagem de prévia: ${coverError.message}`);
+        if (project?.video_url) await removeUnreferencedPortfolioMedia([project.video_url]);
+        backgroundSaveRequested.current = false;
+      }
       setMessage('Vídeo comprimido e enviado. A imagem de prévia também foi gerada.');
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Não foi possível comprimir ou enviar o vídeo.');
     } finally {
-      setBusy(false);
+      setVideoBusy(false);
       setUploadStatus('');
     }
   }
@@ -117,20 +141,53 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
     }
     setBusy(true); setError(''); setMessage('');
     const supabase = createClient();
-    const payload = { title:form.title, slug:form.slug || slugify(form.title), category:form.category, format:form.format, media_mode:form.media_mode, year:form.year ? Number(form.year) : null, client:form.client || null, role:form.role || null, intro:form.intro || null, challenge:form.challenge || null, direction:form.direction || null, result:form.result || null, cover_url:form.cover_url, gallery_urls:form.gallery_urls, video_url:form.video_url || null, credits:form.credits || null, featured:form.featured, published:form.published, sort_order:sortOrder };
-    const query = project ? supabase.from('portfolio_projects').update(payload).eq('id', project.id) : supabase.from('portfolio_projects').insert(payload);
-    const { error } = await query;
+    const payload = { title:form.title, slug:form.slug || slugify(form.title), category:form.category, format:form.format, media_mode:uploadedVideo.current ? 'video' : form.media_mode, year:form.year ? Number(form.year) : null, client:form.client || null, role:form.role || null, intro:form.intro || null, challenge:form.challenge || null, direction:form.direction || null, result:form.result || null, cover_url:form.cover_url || uploadedVideo.current?.posterUrl || '', gallery_urls:form.gallery_urls, video_url:uploadedVideo.current?.videoUrl || form.video_url || null, credits:form.credits || null, featured:form.featured, published:form.published, sort_order:sortOrder };
+    const existingId = savedProjectId.current;
+    const query = existingId
+      ? supabase.from('portfolio_projects').update(payload).eq('id', existingId).select('id').single()
+      : supabase.from('portfolio_projects').insert(payload).select('id').single();
+    const { data: saved, error } = await query;
     if (error) { setError(error.message); setBusy(false); return; }
-    setMessage('Projeto salvo.');
-    if (!project) { window.location.href = '/admin'; return; }
-    try {
-      await removeUnreferencedPortfolioMedia([
-        project.cover_url,
-        ...(project.gallery_urls ?? []),
-        project.video_url ?? '',
-      ]);
-    } catch (cleanupError) {
-      setError(cleanupError instanceof Error ? cleanupError.message : 'O projeto foi salvo, mas não foi possível limpar as mídias antigas.');
+    savedProjectId.current = saved.id;
+    const completedUpload = uploadedVideo.current;
+    if (completedUpload && payload.video_url !== completedUpload.videoUrl) {
+      const { error: videoError } = await supabase
+        .from('portfolio_projects')
+        .update({ video_url: completedUpload.videoUrl, media_mode: 'video' })
+        .eq('id', saved.id);
+      if (videoError) {
+        setError(`Projeto salvo, mas não foi possível associar o vídeo: ${videoError.message}`);
+        setBusy(false);
+        return;
+      }
+      if (!payload.cover_url && !form.cover_url) {
+        const { error: coverError } = await supabase
+          .from('portfolio_projects')
+          .update({ cover_url: completedUpload.posterUrl })
+          .eq('id', saved.id)
+          .eq('cover_url', '');
+        if (coverError) {
+          setError(`Projeto salvo, mas não foi possível salvar a imagem de prévia: ${coverError.message}`);
+          setBusy(false);
+          return;
+        }
+      }
+    }
+    backgroundSaveRequested.current = videoBusy && !completedUpload;
+    setMessage(videoBusy
+      ? 'Projeto salvo. O vídeo continua sendo processado e será associado automaticamente.'
+      : 'Projeto salvo.');
+    if (!existingId && !videoBusy) { window.location.href = '/admin'; return; }
+    if (project) {
+      try {
+        await removeUnreferencedPortfolioMedia([
+          project.cover_url,
+          ...(project.gallery_urls ?? []),
+          project.video_url ?? '',
+        ]);
+      } catch (cleanupError) {
+        setError(cleanupError instanceof Error ? cleanupError.message : 'O projeto foi salvo, mas não foi possível limpar as mídias antigas.');
+      }
     }
     setBusy(false);
   }
@@ -163,14 +220,14 @@ export default function ProjectForm({ project, nextSortOrder = 1 }: { project?: 
       </div>
       <div className="admin-field">
         <label>Enviar vídeo (MP4/WebM/MOV)</label>
-        <input type="file" accept="video/mp4,video/webm,video/quicktime" disabled={busy} onChange={e => { void uploadVideo(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+        <input type="file" accept="video/mp4,video/webm,video/quicktime" disabled={busy || videoBusy} onChange={e => { void uploadVideo(e.target.files?.[0]); e.currentTarget.value = ''; }} />
         <small style={{ color:'#858179' }}>O vídeo é comprimido no navegador para MP4 e recebe uma imagem de prévia.</small>
         <label>Vídeo por URL ou embed</label>
-        <input placeholder="https://.../video.mp4 ou https://www.youtube.com/embed/..." value={form.video_url} onChange={e => set('video_url', e.target.value)} />
+        <input placeholder="https://.../video.mp4 ou https://www.youtube.com/embed/..." value={form.video_url} disabled={videoBusy} onChange={e => { uploadedVideo.current = null; set('video_url', e.target.value); }} />
         {form.video_url && /\.(mp4|webm|mov)(\?.*)?$/i.test(form.video_url) && <video src={form.video_url} poster={form.cover_url || undefined} controls playsInline preload="metadata" style={{ width:'100%', maxHeight:320 }} />}
-        {form.video_url && <button type="button" className="admin-button ghost" disabled={busy} onClick={() => set('video_url', '')}>Remover vídeo</button>}
+        {form.video_url && <button type="button" className="admin-button ghost" disabled={busy || videoBusy} onClick={() => { uploadedVideo.current = null; set('video_url', ''); }}>Remover vídeo</button>}
       </div>
-      <small style={{ color:'#858179' }}>Vídeos são processados no navegador com FFmpeg/WASM e convertidos para MP4. O vídeo resultante deve caber em {Math.round(MAX_MEDIA_SIZE / 1024 / 1024)} MB para o Storage.</small>
+      <small style={{ color:'#858179' }}>Vídeos são processados no navegador com FFmpeg/WASM e convertidos para MP4. Você pode salvar o projeto enquanto o processamento continua; mantenha esta aba aberta para o vídeo ser associado assim que terminar. O arquivo final deve caber em {Math.round(MAX_MEDIA_SIZE / 1024 / 1024)} MB para o Storage.</small>
       {uploadStatus && <div className="notice" aria-live="polite">{uploadStatus}</div>}
     </div>
     <div className="admin-card admin-checks"><label className="admin-check"><input type="checkbox" checked={form.featured} onChange={e => set('featured', e.target.checked)} /> Destaque na home</label><label className="admin-check"><input type="checkbox" checked={form.published} onChange={e => set('published', e.target.checked)} /> Publicado</label></div>
